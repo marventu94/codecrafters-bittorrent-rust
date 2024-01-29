@@ -1,5 +1,5 @@
 use serde::de::{self, Visitor};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -33,5 +33,15 @@ impl<'de> Deserialize<'de> for Hashes {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_bytes(HashesVisitor)
+    }
+}
+
+impl Serialize for Hashes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let single_slice = self.0.concat();
+        serializer.serialize_bytes(&single_slice)
     }
 }

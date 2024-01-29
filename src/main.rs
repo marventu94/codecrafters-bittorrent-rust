@@ -4,7 +4,8 @@ use std::path::PathBuf;
 pub mod utils;
 
 // Torrent
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
 pub mod hashes;
 //
 
@@ -36,18 +37,23 @@ fn main() -> anyhow::Result<()> {
             } else {
                 todo!();
             }
+            let info_encoded = serde_bencode::to_bytes(&t.info).context("re-encode info section")?;
+            let mut hasher = Sha1::new();
+            hasher.update(&info_encoded);
+            let info_hash = hasher.finalize();
+            println!("Info Hash: {}", hex::encode(info_hash))
         }
     }
     Ok(())
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct Torrent {
     announce: String,
     info: Info,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[allow(dead_code)]
 struct Info {
     #[serde(rename = "piece length")]
@@ -57,7 +63,7 @@ struct Info {
     keys: Keys,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 #[allow(dead_code)]
 enum Keys {
@@ -65,7 +71,7 @@ enum Keys {
     MultiFile { files: File },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[allow(dead_code)]
 struct File {
     length: usize,
