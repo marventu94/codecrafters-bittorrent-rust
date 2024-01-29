@@ -41,7 +41,12 @@ fn main() -> anyhow::Result<()> {
             let mut hasher = Sha1::new();
             hasher.update(&info_encoded);
             let info_hash = hasher.finalize();
-            println!("Info Hash: {}", hex::encode(info_hash))
+            println!("Info Hash: {}", hex::encode(info_hash));
+            println!("Piece Length: {}", t.info.plength);
+            println!("Pieces Hashes:");
+            for hash in t.info.pieces.0 {
+                println!("{}", hex::encode(hash))
+            }
         }
     }
     Ok(())
