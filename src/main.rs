@@ -31,12 +31,12 @@ fn main() -> anyhow::Result<()> {
         Command::Info { torrent } => {
             let dot_torrent = std::fs::read(torrent).context("open torrent file")?;
             let t: Torrent = serde_bencode::from_bytes(&dot_torrent).context("parse torrent file")?;
-            println!("Tracker URL: {}", t.announce);
-            if let Keys::SingleFile { length } = t.info.keys {
-                println!("Length: {length}");
+            //println!("Tracker URL: {}", t.announce);
+            /*if let Keys::SingleFile { length } = t.info.keys {
+                //println!("Length: {length}");
             } else {
                 todo!();
-            }
+            }*/
             let info_encoded = serde_bencode::to_bytes(&t.info).context("re-encode info section")?;
             let mut hasher = Sha1::new();
             hasher.update(&info_encoded);
