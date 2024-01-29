@@ -56,6 +56,7 @@ struct Torrent {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[allow(dead_code)]
 struct Info {
+    name: String,
     #[serde(rename = "piece length")]
     plength: usize,
     pieces: hashes::Hashes,
