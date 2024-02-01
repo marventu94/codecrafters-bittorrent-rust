@@ -1,7 +1,8 @@
-use anyhow::{Context, Ok};
+use anyhow::{anyhow, Context, Ok};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 pub mod utils;
+pub mod peers;
 
 // Torrent
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,13 @@ use std::net::Ipv4Addr;
 use std::net::SocketAddrV4;
 //
 
+// Handshake
+use std::net::SocketAddr;
+use tokio::net::TcpStream;
+use tokio::io::AsyncWriteExt;
+use tokio::io::AsyncReadExt;
+//
+
 #[derive(Parser, Debug)]
 struct Args {
     #[command(subcommand)]
@@ -26,6 +34,7 @@ enum Command {
     Decode { value: String },
     Info { torrent: PathBuf },
     Peers { path: PathBuf },
+    Handshake { path: PathBuf, peer: SocketAddr },
 }
 
 #[tokio::main]
@@ -95,7 +104,22 @@ async fn main() -> anyhow::Result<()> {
                 })
                 .collect();
             peers.iter().for_each(|p| println!("{p:?}"));
-        }
+        },
+        Command::Handshake { path, peer } => {
+            eprintln!("{path:?} {peer:?}");
+            let content = std::fs::read(path).context("Reading torrent file")?;
+            let t: Torrent = serde_bencode::from_bytes(&content).context("parse torrent file")?;
+            let mut tcp_peer = TcpStream::connect(peer)
+                .await
+                .context("Connecting to peer")?;
+            let hs = peers::Handshake::new(t.info.hash()?, b"00112233445566778899".to_owned());
+            tcp_peer.write_all(&hs.to_bytes()).await?;
+            let mut buf = [0; peers::HANDSHAKE_LEN];
+            tcp_peer.read_exact(&mut buf).await?;
+            //eprintln!("{buf:?}");
+            let hs_resp = peers::Handshake::from_bytes(&buf)?;
+            println!("Peer ID: {}", hex::encode(hs_resp.peer_id));
+        },
     }
     Ok(())
 }
@@ -115,6 +139,16 @@ struct Info {
     pieces: hashes::Hashes,
     #[serde(flatten)]
     keys: Keys,
+}
+
+impl Info {
+    fn hash(&self) -> anyhow::Result<[u8; 20]> {
+        let info = serde_bencode::to_bytes(&self)?;
+        let mut hasher = Sha1::new();
+        hasher.update(&info);
+        let hashed_info = hasher.finalize();
+        hashed_info[..].try_into().map_err(|e| anyhow!("{}", e))
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
