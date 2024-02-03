@@ -8,7 +8,9 @@ pub struct Handshake {
 }
 
 const BITTORRENT: &[u8; 19] = b"BitTorrent protocol";
+
 pub const HANDSHAKE_LEN: usize = 1 + BITTORRENT.len() + 8 + 20 + 20;
+
 impl Handshake {
     pub fn new(info_hash: [u8; 20], peer_id: [u8; 20]) -> Self {
         Handshake {
