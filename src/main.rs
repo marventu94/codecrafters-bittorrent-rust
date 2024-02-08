@@ -31,8 +31,13 @@ use tokio::io::AsyncWriteExt;
 use tokio::io::AsyncReadExt;
 //
 
+// Download
+use std::sync::Arc;
+//
+
 pub mod download_piece;
 use download_piece::download_piece;
+use download_piece::download_pieces;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -52,7 +57,12 @@ enum Command {
         output: PathBuf, // Nueva opción -o para el comando DownloadPiece
         path: PathBuf, 
         piece_index: u32 
-    }, 
+    },
+    Download {
+        #[clap(short, long)]
+        output: PathBuf,
+        path: PathBuf, 
+    }
 }
 
 #[tokio::main]
@@ -145,7 +155,17 @@ async fn main() -> anyhow::Result<()> {
 
             std::fs::write(output.clone(), downloaded_piece).unwrap();
             println!("Piece {} downloaded to {}.", piece_index, output.display());
-        }   
+        }
+        Command::Download { output, path } => {
+            let content = std::fs::read(path.clone()).context("Reading torrent file")?;
+            let t: Torrent = serde_bencode::from_bytes(&content).context("parse torrent file")?;
+            
+            let torrent_arc = Arc::new(t);
+            let downloaded_pieces: Vec<u8> = download_pieces(torrent_arc).await.context("problem dowload torrent").unwrap();
+            std::fs::write(output.clone(), &downloaded_pieces)?;
+
+            println!("Downloaded {:?} to {:?}", path, output);
+        }
     }
     Ok(())
 }
